@@ -5,21 +5,20 @@ namespace App\Filament\Widgets;
 use Filament\Widgets\ChartWidget;
 use App\Models\DataHarian;
 use App\Models\Komoditas;
-use Filament\Forms\Components\Select;
 
 class ErageHargaKomoditasChart extends ChartWidget
 {
     protected static ?string $heading = 'Rata-rata Harga per Komoditas';
-    
+
     public ?string $filter = null;
 
     protected function getFilters(): ?array
     {
         $komoditasOptions = Komoditas::pluck('name', 'id')->toArray();
-        
+
         return [
             null => 'Semua Komoditas',
-            ...$komoditasOptions
+            ...$komoditasOptions,
         ];
     }
 
@@ -28,21 +27,19 @@ class ErageHargaKomoditasChart extends ChartWidget
         $labels = [];
         $data = [];
 
-        // Query builder untuk komoditas dengan filter
         $komoditasQuery = Komoditas::query();
-        
-        // Jika ada filter yang dipilih, filter berdasarkan ID
-        if ($this->filter) {
+
+        // 🔧 Pengecekan eksplisit
+        if ($this->filter !== null) {
             $komoditasQuery->where('id', $this->filter);
         }
-        
+
         $komoditasList = $komoditasQuery->get();
 
         foreach ($komoditasList as $komoditas) {
             $avg = DataHarian::where('komoditas_id', $komoditas->id)
                 ->avg('data_input');
 
-            // Hanya tampilkan jika ada data
             if ($avg !== null) {
                 $labels[] = $komoditas->name;
                 $data[] = round($avg, 2);
@@ -65,6 +62,6 @@ class ErageHargaKomoditasChart extends ChartWidget
 
     protected function getType(): string
     {
-        return 'line'; // bisa juga coba 'bar'
+        return 'line';
     }
 }
