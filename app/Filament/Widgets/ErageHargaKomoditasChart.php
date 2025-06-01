@@ -11,32 +11,32 @@ class ErageHargaKomoditasChart extends ChartWidget
 {
     protected static ?string $heading = 'Rata-rata Harga per Komoditas';
 
-    public ?string $komoditasFilter = null;
+    public ?string $komoditasId = null; // <- Properti untuk menyimpan filter dropdown
 
+    // 1. Tampilkan dropdown di bagian atas chart
     protected function getFormSchema(): array
     {
         return [
-            Select::make('komoditasFilter')
-                ->label('Filter Komoditas')
-                ->options(Komoditas::pluck('name', 'id'))
+            Select::make('komoditasId')
+                ->label('Pilih Komoditas')
+                ->options(
+                    Komoditas::all()->pluck('name', 'id')
+                )
                 ->searchable()
                 ->placeholder('Semua Komoditas'),
         ];
     }
 
+    // 2. Ambil dan kelompokkan data berdasarkan filter komoditas
     protected function getData(): array
     {
         $labels = [];
         $data = [];
 
-        $komoditasQuery = Komoditas::query();
-
-        // Filter jika user memilih komoditas tertentu
-        if ($this->komoditasFilter) {
-            $komoditasQuery->where('id', $this->komoditasFilter);
-        }
-
-        $komoditasList = $komoditasQuery->get();
+        // Ambil list komoditas, bisa 1 jika difilter atau semua
+        $komoditasList = $this->komoditasId
+            ? Komoditas::where('id', $this->komoditasId)->get()
+            : Komoditas::all();
 
         foreach ($komoditasList as $komoditas) {
             $avg = DataHarian::where('komoditas_id', $komoditas->id)
@@ -62,6 +62,6 @@ class ErageHargaKomoditasChart extends ChartWidget
 
     protected function getType(): string
     {
-        return 'line'; // bisa diganti ke 'bar' jika ingin
+        return 'line'; // Ganti ke 'bar' jika ingin grafik batang
     }
 }
