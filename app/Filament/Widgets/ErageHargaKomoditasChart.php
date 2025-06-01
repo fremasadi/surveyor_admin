@@ -5,18 +5,20 @@ namespace App\Filament\Widgets;
 use Filament\Widgets\ChartWidget;
 use App\Models\DataHarian;
 use App\Models\Komoditas;
-use Illuminate\Support\Facades\DB;
 
 class ErageHargaKomoditasChart extends ChartWidget
 {
     protected static ?string $heading = 'Rata-rata Harga per Komoditas';
+
+    // Menyimpan filter terpilih
+    public ?array $filters = [];
 
     protected function getFilters(): array
     {
         return [
             'komoditas' => [
                 'label' => 'Komoditas',
-                'options' => Komoditas::pluck('name', 'id')->toArray(),
+                'options' => [null => 'Semua Komoditas'] + Komoditas::pluck('name', 'id')->toArray(),
             ],
         ];
     }
@@ -26,25 +28,23 @@ class ErageHargaKomoditasChart extends ChartWidget
         $labels = [];
         $data = [];
 
-        $filterKomoditas = $this->filters['komoditas'] ?? null;
+        // Ambil filter komoditas jika ada
+        $selectedKomoditasId = $this->filters['komoditas'] ?? null;
 
+        // Filter data berdasarkan komoditas terpilih
         $komoditasQuery = Komoditas::query();
-
-        if ($filterKomoditas) {
-            $komoditasQuery->where('id', $filterKomoditas);
+        if ($selectedKomoditasId) {
+            $komoditasQuery->where('id', $selectedKomoditasId);
         }
 
         $komoditasList = $komoditasQuery->get();
 
         foreach ($komoditasList as $komoditas) {
-            $avg = DataHarian::where('komoditas_id', $komoditas->id)
-                ->where('status', 1)
-                ->whereNotNull('data_input')
-                ->avg(DB::raw('CAST(data_input AS UNSIGNED)'));
+            $average = DataHarian::where('komoditas_id', $komoditas->id)->avg('data_input');
 
-            if ($avg !== null) {
+            if ($average !== null) {
                 $labels[] = $komoditas->name;
-                $data[] = round($avg, 2);
+                $data[] = round($average, 2);
             }
         }
 
@@ -64,6 +64,6 @@ class ErageHargaKomoditasChart extends ChartWidget
 
     protected function getType(): string
     {
-        return 'line';
+        return 'line'; // atau 'bar'
     }
 }
