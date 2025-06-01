@@ -16,12 +16,14 @@ class ErageHargaKomoditasChart extends ChartWidget
 
     protected function getFilters(): ?array
     {
-        $komoditasOptions = Komoditas::pluck('name', 'id')->toArray();
+        $filters = ['all' => 'Semua Komoditas'];
         
-        return [
-            'all' => 'Semua Komoditas', // Ubah dari null ke 'all'
-            ...$komoditasOptions
-        ];
+        $komoditasList = Komoditas::orderBy('name')->get();
+        foreach ($komoditasList as $komoditas) {
+            $filters[$komoditas->id] = $komoditas->name;
+        }
+        
+        return $filters;
     }
 
     protected function getData(): array
