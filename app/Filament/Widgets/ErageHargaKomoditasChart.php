@@ -28,32 +28,41 @@ class ErageHargaKomoditasChart extends ChartWidget
         $labels = [];
         $data = [];
 
-        // Query builder untuk komoditas dengan filter
-        $komoditasQuery = Komoditas::query();
-        
-        // Jika ada filter yang dipilih, filter berdasarkan ID
+        // Jika ada filter yang dipilih, ambil data untuk komoditas tertentu saja
         if ($this->filter) {
-            $komoditasQuery->where('id', $this->filter);
-        }
-        
-        $komoditasList = $komoditasQuery->get();
+            $komoditas = Komoditas::find($this->filter);
+            if ($komoditas) {
+                $avg = DataHarian::where('komoditas_id', $komoditas->id)
+                    ->whereNotNull('data_input')
+                    ->where('data_input', '>', 0)
+                    ->avg('data_input');
+                    
+                $count = DataHarian::where('komoditas_id', $komoditas->id)
+                    ->whereNotNull('data_input')
+                    ->where('data_input', '>', 0)
+                    ->count();
 
-        foreach ($komoditasList as $komoditas) {
-            // Ambil data harian untuk komoditas ini
-            $dataHarian = DataHarian::where('komoditas_id', $komoditas->id)
+                if ($avg !== null && $count > 0) {
+                    $labels[] = $komoditas->name;
+                    $data[] = round($avg, 2);
+                }
+            }
+        } else {
+            // Untuk semua komoditas, kelompokkan berdasarkan komoditas_id
+            $avgData = DataHarian::select('komoditas_id')
+                ->selectRaw('AVG(data_input) as avg_price')
+                ->selectRaw('COUNT(*) as total_data')
                 ->whereNotNull('data_input')
-                ->where('data_input', '>', 0);
-            
-            $count = $dataHarian->count();
-            $avg = $dataHarian->avg('data_input');
+                ->where('data_input', '>', 0)
+                ->groupBy('komoditas_id')
+                ->with('komoditas')
+                ->get();
 
-            // Debug: uncomment untuk melihat data
-            // \Log::info("Komoditas: {$komoditas->name}, Count: {$count}, Avg: {$avg}");
-
-            // Hanya tampilkan jika ada data
-            if ($avg !== null && $count > 0) {
-                $labels[] = $komoditas->name . " ({$count} data)";
-                $data[] = round($avg, 2);
+            foreach ($avgData as $item) {
+                if ($item->komoditas && $item->avg_price !== null) {
+                    $labels[] = $item->komoditas->name;
+                    $data[] = round($item->avg_price, 2);
+                }
             }
         }
 
