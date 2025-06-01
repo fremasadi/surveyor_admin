@@ -26,26 +26,27 @@ class ErageHargaKomoditasChart extends ChartWidget
     {
         $labels = [];
         $data = [];
-
+    
         $komoditasQuery = Komoditas::query();
-
-        // 🔧 Pengecekan eksplisit
-        if ($this->filter !== null) {
+    
+        if ($this->filter) {
             $komoditasQuery->where('id', $this->filter);
         }
-
+    
         $komoditasList = $komoditasQuery->get();
-
+    
         foreach ($komoditasList as $komoditas) {
             $avg = DataHarian::where('komoditas_id', $komoditas->id)
-                ->avg('data_input');
-
+                ->where('status', 1)
+                ->whereNotNull('data_input')
+                ->avg(\DB::raw('CAST(data_input AS UNSIGNED)'));
+    
             if ($avg !== null) {
                 $labels[] = $komoditas->name;
                 $data[] = round($avg, 2);
             }
         }
-
+    
         return [
             'datasets' => [
                 [
@@ -59,6 +60,7 @@ class ErageHargaKomoditasChart extends ChartWidget
             'labels' => $labels,
         ];
     }
+    
 
     protected function getType(): string
     {
