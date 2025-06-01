@@ -42,10 +42,21 @@ class ErageHargaKomoditasChart extends ChartWidget
             // Kurangi 1 dari filter untuk mendapatkan ID asli
             $realKomoditasId = $this->filter - 1;
             
-            \Log::info('Real komoditas ID: ' . $realKomoditasId);
+            \Log::info('Filter value: ' . $this->filter . ', Real komoditas ID: ' . $realKomoditasId);
             
             $komoditas = Komoditas::find($realKomoditasId);
             if ($komoditas) {
+                \Log::info('Found komoditas: ' . $komoditas->name . ' (ID: ' . $komoditas->id . ')');
+                
+                // Debug: lihat semua data untuk komoditas ini
+                $allData = DataHarian::where('komoditas_id', $komoditas->id)
+                    ->whereNotNull('data_input')
+                    ->where('data_input', '>', 0)
+                    ->pluck('data_input')
+                    ->toArray();
+                
+                \Log::info('All data for ' . $komoditas->name . ': ' . implode(', ', $allData));
+                
                 $avg = DataHarian::where('komoditas_id', $komoditas->id)
                     ->whereNotNull('data_input')
                     ->where('data_input', '>', 0)
@@ -56,12 +67,14 @@ class ErageHargaKomoditasChart extends ChartWidget
                     ->where('data_input', '>', 0)
                     ->count();
 
-                \Log::info("Komoditas: {$komoditas->name}, Count: {$count}, Avg: {$avg}");
+                \Log::info("Final result - Komoditas: {$komoditas->name}, Count: {$count}, Avg: {$avg}");
 
                 if ($avg !== null && $count > 0) {
                     $labels[] = $komoditas->name;
                     $data[] = round($avg, 2);
                 }
+            } else {
+                \Log::error('Komoditas not found with ID: ' . $realKomoditasId);
             }
         } else {
             // Untuk semua komoditas, kelompokkan berdasarkan komoditas_id
