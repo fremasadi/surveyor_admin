@@ -39,14 +39,38 @@ class ErageHargaKomoditasChart extends ChartWidget
         $komoditasList = $komoditasQuery->get();
 
         foreach ($komoditasList as $komoditas) {
-            $avg = DataHarian::where('komoditas_id', $komoditas->id)
-                ->avg('data_input');
+            // Ambil data harian untuk komoditas ini
+            $dataHarian = DataHarian::where('komoditas_id', $komoditas->id)
+                ->whereNotNull('data_input')
+                ->where('data_input', '>', 0);
+            
+            $count = $dataHarian->count();
+            $avg = $dataHarian->avg('data_input');
+
+            // Debug: uncomment untuk melihat data
+            // \Log::info("Komoditas: {$komoditas->name}, Count: {$count}, Avg: {$avg}");
 
             // Hanya tampilkan jika ada data
-            if ($avg !== null) {
-                $labels[] = $komoditas->name;
+            if ($avg !== null && $count > 0) {
+                $labels[] = $komoditas->name . " ({$count} data)";
                 $data[] = round($avg, 2);
             }
+        }
+
+        // Jika tidak ada data sama sekali
+        if (empty($data)) {
+            return [
+                'datasets' => [
+                    [
+                        'label' => 'Rata-rata Harga',
+                        'data' => [0],
+                        'borderColor' => '#3b82f6',
+                        'backgroundColor' => 'rgba(59, 130, 246, 0.2)',
+                        'tension' => 0.3,
+                    ],
+                ],
+                'labels' => ['Tidak ada data'],
+            ];
         }
 
         return [
