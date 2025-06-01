@@ -10,40 +10,43 @@ use Filament\Forms\Components\Select;
 class ErageHargaKomoditasChart extends ChartWidget
 {
     protected static ?string $heading = 'Rata-rata Harga per Komoditas';
+    
+    public ?string $filter = null;
 
-    public ?string $komoditasId = null; // <- Properti untuk menyimpan filter dropdown
-
-    // 1. Tampilkan dropdown di bagian atas chart
-    protected function getFormSchema(): array
+    protected function getFilters(): ?array
     {
+        $komoditasOptions = Komoditas::pluck('name', 'id')->toArray();
+        
         return [
-            Select::make('komoditasId')
-                ->label('Pilih Komoditas')
-                ->options(
-                    Komoditas::all()->pluck('name', 'id')
-                )
-                ->searchable()
-                ->placeholder('Semua Komoditas'),
+            null => 'Semua Komoditas',
+            ...$komoditasOptions
         ];
     }
 
-    // 2. Ambil dan kelompokkan data berdasarkan filter komoditas
     protected function getData(): array
     {
         $labels = [];
         $data = [];
 
-        // Ambil list komoditas, bisa 1 jika difilter atau semua
-        $komoditasList = $this->komoditasId
-            ? Komoditas::where('id', $this->komoditasId)->get()
-            : Komoditas::all();
+        // Query builder untuk komoditas dengan filter
+        $komoditasQuery = Komoditas::query();
+        
+        // Jika ada filter yang dipilih, filter berdasarkan ID
+        if ($this->filter) {
+            $komoditasQuery->where('id', $this->filter);
+        }
+        
+        $komoditasList = $komoditasQuery->get();
 
         foreach ($komoditasList as $komoditas) {
             $avg = DataHarian::where('komoditas_id', $komoditas->id)
                 ->avg('data_input');
 
-            $labels[] = $komoditas->name;
-            $data[] = round($avg, 2);
+            // Hanya tampilkan jika ada data
+            if ($avg !== null) {
+                $labels[] = $komoditas->name;
+                $data[] = round($avg, 2);
+            }
         }
 
         return [
@@ -62,6 +65,6 @@ class ErageHargaKomoditasChart extends ChartWidget
 
     protected function getType(): string
     {
-        return 'line'; // Ganti ke 'bar' jika ingin grafik batang
+        return 'line'; // bisa juga coba 'bar'
     }
 }
