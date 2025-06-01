@@ -5,20 +5,19 @@ namespace App\Filament\Widgets;
 use Filament\Widgets\ChartWidget;
 use App\Models\DataHarian;
 use App\Models\Komoditas;
+use Illuminate\Support\Facades\DB;
 
 class ErageHargaKomoditasChart extends ChartWidget
 {
     protected static ?string $heading = 'Rata-rata Harga per Komoditas';
 
-    public ?string $filter = null;
-
-    protected function getFilters(): ?array
+    protected function getFilters(): array
     {
-        $komoditasOptions = Komoditas::pluck('name', 'id')->toArray();
-
         return [
-            null => 'Semua Komoditas',
-            ...$komoditasOptions,
+            'komoditas' => [
+                'label' => 'Komoditas',
+                'options' => Komoditas::pluck('name', 'id')->toArray(),
+            ],
         ];
     }
 
@@ -26,27 +25,29 @@ class ErageHargaKomoditasChart extends ChartWidget
     {
         $labels = [];
         $data = [];
-    
+
+        $filterKomoditas = $this->filters['komoditas'] ?? null;
+
         $komoditasQuery = Komoditas::query();
-    
-        if ($this->filter) {
-            $komoditasQuery->where('id', $this->filter);
+
+        if ($filterKomoditas) {
+            $komoditasQuery->where('id', $filterKomoditas);
         }
-    
+
         $komoditasList = $komoditasQuery->get();
-    
+
         foreach ($komoditasList as $komoditas) {
             $avg = DataHarian::where('komoditas_id', $komoditas->id)
                 ->where('status', 1)
                 ->whereNotNull('data_input')
-                ->avg(\DB::raw('CAST(data_input AS UNSIGNED)'));
-    
+                ->avg(DB::raw('CAST(data_input AS UNSIGNED)'));
+
             if ($avg !== null) {
                 $labels[] = $komoditas->name;
                 $data[] = round($avg, 2);
             }
         }
-    
+
         return [
             'datasets' => [
                 [
@@ -60,7 +61,6 @@ class ErageHargaKomoditasChart extends ChartWidget
             'labels' => $labels,
         ];
     }
-    
 
     protected function getType(): string
     {
