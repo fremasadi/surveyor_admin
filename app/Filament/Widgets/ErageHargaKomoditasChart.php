@@ -6,6 +6,7 @@ use Filament\Widgets\ChartWidget;
 use App\Models\DataHarian;
 use App\Models\Komoditas;
 use Filament\Forms\Components\Select;
+use Illuminate\Support\Facades\Log;
 
 class ErageHargaKomoditasChart extends ChartWidget
 {
@@ -18,7 +19,7 @@ class ErageHargaKomoditasChart extends ChartWidget
         $komoditasOptions = Komoditas::pluck('name', 'id')->toArray();
         
         return [
-            null => 'Semua Komoditas',
+            'all' => 'Semua Komoditas', // Ubah dari null ke 'all'
             ...$komoditasOptions
         ];
     }
@@ -28,19 +29,32 @@ class ErageHargaKomoditasChart extends ChartWidget
         $labels = [];
         $data = [];
 
+        // Debug log untuk melihat filter yang dipilih
+        Log::info('Filter selected: ' . $this->filter);
+
         // Query builder untuk komoditas dengan filter
         $komoditasQuery = Komoditas::query();
         
-        // Jika ada filter yang dipilih, filter berdasarkan ID
-        if ($this->filter) {
+        // Jika ada filter yang dipilih dan bukan 'all', filter berdasarkan ID
+        if ($this->filter && $this->filter !== 'all') {
             $komoditasQuery->where('id', $this->filter);
+            Log::info('Filtering by komoditas ID: ' . $this->filter);
+        } else {
+            Log::info('Showing all komoditas');
         }
         
         $komoditasList = $komoditasQuery->get();
+        
+        // Debug log untuk melihat komoditas yang diambil
+        foreach ($komoditasList as $komoditas) {
+            Log::info('Processing komoditas: ' . $komoditas->name . ' (ID: ' . $komoditas->id . ')');
+        }
 
         foreach ($komoditasList as $komoditas) {
             $avg = DataHarian::where('komoditas_id', $komoditas->id)
                 ->avg('data_input');
+
+            Log::info("Komoditas: {$komoditas->name}, Avg: {$avg}");
 
             // Hanya tampilkan jika ada data
             if ($avg !== null) {
@@ -48,6 +62,10 @@ class ErageHargaKomoditasChart extends ChartWidget
                 $data[] = round($avg, 2);
             }
         }
+
+        // Debug log untuk hasil akhir
+        Log::info('Final labels: ' . json_encode($labels));
+        Log::info('Final data: ' . json_encode($data));
 
         return [
             'datasets' => [
@@ -65,6 +83,6 @@ class ErageHargaKomoditasChart extends ChartWidget
 
     protected function getType(): string
     {
-        return 'line'; // bisa juga coba 'bar'
+        return 'line';
     }
 }
