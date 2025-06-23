@@ -12,11 +12,9 @@ class EnsureUserIsAdmin
     {
         $user = $request->user();
 
-        // Jika user tidak ada atau bukan admin
         if (!$user || $user->role !== 'admin') {
-            Auth::logout();
+            Auth::logout(); // atau Auth::guard('web')->logout();
 
-            // redirect langsung ke URL filament admin login (bukan pakai route())
             return redirect('/admin/login')
                 ->with('error', 'Akses ditolak. Hanya admin yang diperbolehkan.');
         }
