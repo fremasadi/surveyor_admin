@@ -6,13 +6,17 @@ use Filament\Widgets\ChartWidget;
 use App\Models\DataHarian;
 use App\Models\Komoditas;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\DatePicker;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class ErageHargaKomoditasChart extends ChartWidget
 {
     protected static ?string $heading = 'Rata-rata Harga per Komoditas';
     
     public ?string $filter = null;
+    public ?string $filterStartDate = null;
+    public ?string $filterEndDate = null;
 
     protected function getFilters(): ?array
     {
@@ -26,13 +30,38 @@ class ErageHargaKomoditasChart extends ChartWidget
         return $filters;
     }
 
+    protected function getFormSchema(): array
+    {
+        return [
+            Select::make('filter')
+                ->label('Komoditas')
+                ->options($this->getFilters())
+                ->default('all'),
+            
+            DatePicker::make('filterStartDate')
+                ->label('Tanggal Mulai')
+                ->default(now()->format('Y-m-d'))
+                ->native(false),
+            
+            DatePicker::make('filterEndDate')
+                ->label('Tanggal Akhir')
+                ->default(now()->format('Y-m-d'))
+                ->native(false),
+        ];
+    }
+
     protected function getData(): array
     {
         $labels = [];
         $data = [];
 
+        // Set default tanggal jika belum dipilih
+        $startDate = $this->filterStartDate ?: now()->format('Y-m-d');
+        $endDate = $this->filterEndDate ?: now()->format('Y-m-d');
+
         // Debug log untuk melihat filter yang dipilih
         Log::info('Filter selected: ' . $this->filter);
+        Log::info('Date range: ' . $startDate . ' to ' . $endDate);
 
         // Query builder untuk komoditas dengan filter
         $komoditasQuery = Komoditas::query();
@@ -53,10 +82,21 @@ class ErageHargaKomoditasChart extends ChartWidget
         }
 
         foreach ($komoditasList as $komoditas) {
-            $avg = DataHarian::where('komoditas_id', $komoditas->id)
-                ->avg('data_input');
+            // Query dengan filter tanggal
+            $dataQuery = DataHarian::where('komoditas_id', $komoditas->id);
+            
+            // Tambahkan filter tanggal
+            if ($startDate && $endDate) {
+                $dataQuery->whereBetween('tanggal', [$startDate, $endDate]);
+            } elseif ($startDate) {
+                $dataQuery->where('tanggal', '>=', $startDate);
+            } elseif ($endDate) {
+                $dataQuery->where('tanggal', '<=', $endDate);
+            }
+            
+            $avg = $dataQuery->avg('data_input');
 
-            Log::info("Komoditas: {$komoditas->name}, Avg: {$avg}");
+            Log::info("Komoditas: {$komoditas->name}, Avg: {$avg}, Date range: {$startDate} to {$endDate}");
 
             // Hanya tampilkan jika ada data
             if ($avg !== null) {
@@ -72,7 +112,7 @@ class ErageHargaKomoditasChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Rata-rata Harga',
+                    'label' => 'Rata-rata Harga (' . $startDate . ' - ' . $endDate . ')',
                     'data' => $data,
                     'borderColor' => '#3b82f6',
                     'backgroundColor' => 'rgba(59, 130, 246, 0.2)',
