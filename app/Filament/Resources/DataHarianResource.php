@@ -78,12 +78,12 @@ class DataHarianResource extends Resource
                     ->searchable(),
 
                 Tables\Columns\TextColumn::make('komoditas.name')
-                    ->label('Komoditas')
+                    ->label('Nama Komoditas')
                     ->sortable()
                     ->searchable(),
 
                 Tables\Columns\TextColumn::make('responden.name')
-                    ->label('Penjual')
+                    ->label('Nama Penjual')
                     ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('responden.address')
@@ -111,9 +111,9 @@ class DataHarianResource extends Resource
                     ->sortable()
                     ->searchable(),
 
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Dibuat')
-                    ->dateTime()
+                // Tables\Columns\TextColumn::make('created_at')
+                //     ->label('Dibuat')
+                //     ->dateTime()
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([

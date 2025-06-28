@@ -67,7 +67,17 @@ class KomoditasResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                // Filter: Range Tanggal
+                Filter::make('tanggal')
+                ->form([
+                    DatePicker::make('from')->label('Dari Tanggal'),
+                    DatePicker::make('until')->label('Sampai Tanggal'),
+                ])
+                ->query(function ($query, array $data) {
+                    return $query
+                        ->when($data['from'], fn ($q) => $q->whereDate('tanggal', '>=', $data['from']))
+                        ->when($data['until'], fn ($q) => $q->whereDate('tanggal', '<=', $data['until']));
+                }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
