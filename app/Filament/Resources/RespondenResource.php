@@ -12,8 +12,6 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Select;
 use App\Models\Pasar;
 
 class RespondenResource extends Resource
@@ -34,22 +32,11 @@ class RespondenResource extends Resource
 
                     ->required()
                     ->maxLength(255),
-                    Select::make('pasar_id')
-                    ->label('Pilih Pasar')
-                    ->options(
-                        Pasar::all()->mapWithKeys(fn ($pasar) => [
-                            $pasar->id => "{$pasar->nama} - {$pasar->lokasi}",
-                        ])
-                    )
+                    Forms\Components\Select::make('address')
+                    ->label('Alamat Pasar')
+                    ->options(Pasar::pluck('nama_pasar', 'alamat')->toArray())
                     ->searchable()
-                    ->reactive()
-                    ->afterStateUpdated(function ($state, callable $set) {
-                        $pasar = Pasar::find($state);
-                        if ($pasar) {
-                            $set('address', $pasar->lokasi);
-                        }
-                    }),
-                
+                    ->required(),
                 Forms\Components\TextInput::make('contact')
                 ->label('No.Telepon')
 
@@ -57,28 +44,6 @@ class RespondenResource extends Resource
                     ->maxLength(255),
             ]);
     }
-
-    public static function mutateFormDataBeforeCreate(array $data): array
-{
-    if (isset($data['pasar_id'])) {
-        $pasar = \App\Models\Pasar::find($data['pasar_id']);
-        $data['address'] = $pasar?->lokasi ?? '';
-    }
-
-    return $data;
-}
-
-
-    public static function mutateFormDataBeforeUpdate(array $data): array
-{
-    if (isset($data['pasar_id'])) {
-        $pasar = \App\Models\Pasar::find($data['pasar_id']);
-        $data['address'] = $pasar?->lokasi ?? '';
-    }
-
-    return $data;
-}
-
 
     public static function table(Table $table): Table
     {
