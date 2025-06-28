@@ -24,4 +24,15 @@ class CreateResponden extends CreateRecord
     {
         return $this->getResource()::getUrl('index');
     }
+
+    public static function mutateFormDataBeforeUpdate(array $data): array
+{
+    if (isset($data['pasar_id'])) {
+        $pasar = \App\Models\Pasar::find($data['pasar_id']);
+        $data['address'] = $pasar?->lokasi ?? '';
+    }
+
+    return $data;
+}
+
 }
