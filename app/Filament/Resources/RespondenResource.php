@@ -33,14 +33,14 @@ class RespondenResource extends Resource
                     ->required()
                     ->maxLength(255),
                     Forms\Components\Select::make('address')
-                    ->label('Alamat Pasar')
-                    ->options(
-                        Pasar::all()->pluck('lokasi', 'nama')->mapWithKeys(function ($lokasi, $nama) {
-                            return [$lokasi => "$nama - $lokasi"];
-                        })->toArray()
-                    )
-                    ->searchable()
-                    ->required(),
+    ->label('Alamat Pasar')
+    ->options(
+        Pasar::all()->mapWithKeys(function ($pasar) {
+            return [$pasar->id => "{$pasar->nama} - {$pasar->lokasi}"];
+        })->toArray()
+    )
+    ->searchable()
+    ->required(),
                 Forms\Components\TextInput::make('contact')
                 ->label('No.Telepon')
 
