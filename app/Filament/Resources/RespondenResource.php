@@ -12,6 +12,9 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
+use App\Models\Pasar;
 
 class RespondenResource extends Resource
 {
@@ -31,11 +34,11 @@ class RespondenResource extends Resource
 
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('address')
-                ->label('Alamat')
-
-                    ->required()
-                    ->maxLength(255),
+                    Select::make('pasar_id')
+                    ->label('Pilih Pasar')
+                    ->options(Pasar::all()->pluck('nama', 'id'))
+                    ->reactive()
+                    ->afterStateUpdated(fn ($state, callable $set) => $set('lokasi_pasar', Pasar::find($state)?->lokasi)),
                 Forms\Components\TextInput::make('contact')
                 ->label('No.Telepon')
 
