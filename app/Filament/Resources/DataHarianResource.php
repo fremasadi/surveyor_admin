@@ -17,6 +17,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\SelectFilter;
+use App\Models\Pasar;
 
 class DataHarianResource extends Resource
 {
@@ -112,16 +114,20 @@ class DataHarianResource extends Resource
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->label('Diperbarui')
-                    ->dateTime()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                
+                // Filter: Range Tanggal
+                Filter::make('tanggal')
+                ->form([
+                    DatePicker::make('from')->label('Dari Tanggal'),
+                    DatePicker::make('until')->label('Sampai Tanggal'),
+                ])
+                ->query(function ($query, array $data) {
+                    return $query
+                        ->when($data['from'], fn ($q) => $q->whereDate('tanggal', '>=', $data['from']))
+                        ->when($data['until'], fn ($q) => $q->whereDate('tanggal', '<=', $data['until']));
+                }),
                     
             ])
             ->actions([
