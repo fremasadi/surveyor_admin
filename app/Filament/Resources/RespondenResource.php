@@ -38,7 +38,13 @@ class RespondenResource extends Resource
                     ->label('Pilih Pasar')
                     ->options(Pasar::all()->pluck('nama', 'id'))
                     ->reactive()
-                    ->afterStateUpdated(fn ($state, callable $set) => $set('lokasi_pasar', Pasar::find($state)?->lokasi)),
+                    ->afterStateUpdated(fn ($state, callable $set) => $set('address', \App\Models\Pasar::find($state)?->lokasi)),
+                
+                TextInput::make('address')
+                    ->label('Alamat')
+                    ->required()
+                    ->disabled(), // kalau tidak ingin user ubah
+                
                 Forms\Components\TextInput::make('contact')
                 ->label('No.Telepon')
 
