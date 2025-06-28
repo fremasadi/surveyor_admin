@@ -36,14 +36,19 @@ class RespondenResource extends Resource
                     ->maxLength(255),
                     Select::make('pasar_id')
                     ->label('Pilih Pasar')
-                    ->options(Pasar::all()->pluck('nama', 'id'))
+                    ->options(
+                        Pasar::all()->mapWithKeys(fn ($pasar) => [
+                            $pasar->id => "{$pasar->nama} - {$pasar->lokasi}",
+                        ])
+                    )
+                    ->searchable()
                     ->reactive()
-                    ->afterStateUpdated(fn ($state, callable $set) => $set('address', \App\Models\Pasar::find($state)?->lokasi)),
-                
-                TextInput::make('address')
-                    ->label('Alamat')
-                    ->required()
-                    ->disabled(), // kalau tidak ingin user ubah
+                    ->afterStateUpdated(function ($state, callable $set) {
+                        $pasar = Pasar::find($state);
+                        if ($pasar) {
+                            $set('address', $pasar->lokasi);
+                        }
+                    }),
                 
                 Forms\Components\TextInput::make('contact')
                 ->label('No.Telepon')
