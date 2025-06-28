@@ -23,4 +23,10 @@ class Responden extends Model
         'updated_at' => 'datetime'
     ];
 
+    public function pasar()
+{
+    return $this->belongsTo(Pasar::class);
+}
+
+
 }
