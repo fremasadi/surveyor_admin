@@ -50,11 +50,6 @@ class RespondenResource extends Resource
                         }
                     }),
                 
-                TextInput::make('address')
-                    ->hidden() // tidak ditampilkan
-                    ->dehydrated(), // tetap dikirim ke backend
-                
-                
                 Forms\Components\TextInput::make('contact')
                 ->label('No.Telepon')
 
