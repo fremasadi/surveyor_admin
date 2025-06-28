@@ -34,7 +34,7 @@ class RespondenResource extends Resource
                     ->maxLength(255),
                     Forms\Components\Select::make('address')
                     ->label('Alamat Pasar')
-                    ->options(Pasar::pluck('nama_pasar', 'alamat')->toArray())
+                    ->options(Pasar::pluck('nama', 'lokasi')->toArray())
                     ->searchable()
                     ->required(),
                 Forms\Components\TextInput::make('contact')
