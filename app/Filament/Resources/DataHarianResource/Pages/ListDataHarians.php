@@ -23,7 +23,8 @@ class ListDataHarians extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->label('Tambah'),
             Action::make('exportPDF')
                 ->label('Export PDF')
                 ->icon('heroicon-o-document-arrow-down')
