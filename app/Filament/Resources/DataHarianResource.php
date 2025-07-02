@@ -128,6 +128,23 @@ class DataHarianResource extends Resource
                         ->when($data['from'], fn ($q) => $q->whereDate('tanggal', '>=', $data['from']))
                         ->when($data['until'], fn ($q) => $q->whereDate('tanggal', '<=', $data['until']));
                 }),
+                // Filter: Komoditas
+                SelectFilter::make('komoditas_id')
+                ->label('Nama Komoditas')
+                ->relationship('komoditas', 'name'),
+
+                // Filter: Responden
+                SelectFilter::make('responden_id')
+                    ->label('Nama Penjual')
+                    ->relationship('responden', 'name'),
+
+                // Filter: Status
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        true => 'Aktif',
+                        false => 'Tidak Aktif',
+                    ]),
                     
             ])
             ->actions([
