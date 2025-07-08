@@ -15,17 +15,17 @@ class ErageHargaKomoditasChart extends ChartWidget
     
     public ?string $filter = null;
 
-    protected function getFilters(): ?array
-    {
-        $filters = ['all' => 'Semua Komoditas'];
+    // protected function getFilters(): ?array
+    // {
+    //     $filters = ['all' => 'Semua Komoditas'];
         
-        $komoditasList = Komoditas::orderBy('name')->get();
-        foreach ($komoditasList as $komoditas) {
-            $filters[$komoditas->id] = $komoditas->name;
-        }
+    //     $komoditasList = Komoditas::orderBy('name')->get();
+    //     foreach ($komoditasList as $komoditas) {
+    //         $filters[$komoditas->id] = $komoditas->name;
+    //     }
         
-        return $filters;
-    }
+    //     return $filters;
+    // }
 
     protected function getData(): array
     {
