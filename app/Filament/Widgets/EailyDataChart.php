@@ -46,6 +46,6 @@ class EailyDataChart extends ChartWidget
 
     protected function getType(): string
     {
-        return 'bar'; // atau 'line', 'pie', dll
+        return 'line'; // atau 'line', 'pie', dll
     }
 }
