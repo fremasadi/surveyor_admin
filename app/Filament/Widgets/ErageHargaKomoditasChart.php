@@ -11,9 +11,15 @@ use Carbon\Carbon;
 
 class ErageHargaKomoditasChart extends ChartWidget
 {
-    protected static ?string $heading = 'Rata-rata Harga per Komoditas - Hari Ini';
+    protected static ?string $heading = 'Rata-rata Harga per Komoditas - Hari Ini (Status Aktif)';
     
     public ?string $filter = null;
+    
+    // Mengatur ukuran chart menjadi full column
+    protected int | string | array $columnSpan = 'full';
+    
+    // Mengatur tinggi chart
+    protected static ?string $maxHeight = '400px';
 
     // protected function getFilters(): ?array
     // {
@@ -38,6 +44,7 @@ class ErageHargaKomoditasChart extends ChartWidget
         // Debug log untuk melihat filter yang dipilih
         Log::info('Filter selected: ' . $this->filter);
         Log::info('Date filter: ' . $today->toDateString());
+        Log::info('Only showing data with status = true');
 
         // Query builder untuk komoditas dengan filter
         $komoditasQuery = Komoditas::query();
@@ -69,9 +76,10 @@ class ErageHargaKomoditasChart extends ChartWidget
             $colorIndex = 0;
             
             foreach ($komoditasList as $komoditas) {
-                // Ambil data harian untuk komoditas ini
+                // Ambil data harian untuk komoditas ini dengan status true
                 $dataHarian = DataHarian::where('komoditas_id', $komoditas->id)
                     ->whereDate('created_at', $today)
+                    ->where('status', true)
                     ->orderBy('created_at')
                     ->get();
 
@@ -102,6 +110,7 @@ class ErageHargaKomoditasChart extends ChartWidget
                         'pointHoverRadius' => 6,
                     ];
 
+                    Log::info("Komoditas: {$komoditas->name}, Data points (status=true): " . count($komoditasData));
                     $colorIndex++;
                 }
             }
@@ -114,16 +123,18 @@ class ErageHargaKomoditasChart extends ChartWidget
                 foreach ($komoditasList as $komoditas) {
                     $avg = DataHarian::where('komoditas_id', $komoditas->id)
                         ->whereDate('created_at', $today)
+                        ->where('status', true)
                         ->avg('data_input');
 
                     if ($avg !== null) {
                         $labels[] = $komoditas->name;
                         $data[] = round($avg, 2);
+                        Log::info("Komoditas: {$komoditas->name}, Avg Today (status=true): {$avg}");
                     }
                 }
                 
                 $datasets[] = [
-                    'label' => 'Rata-rata Harga Hari Ini',
+                    'label' => 'Rata-rata Harga Hari Ini (Status Aktif)',
                     'data' => $data,
                     'borderColor' => '#3b82f6',
                     'backgroundColor' => 'rgba(59, 130, 246, 0.2)',
@@ -140,6 +151,7 @@ class ErageHargaKomoditasChart extends ChartWidget
             if ($komoditas) {
                 $dataHarian = DataHarian::where('komoditas_id', $komoditas->id)
                     ->whereDate('created_at', $today)
+                    ->where('status', true)
                     ->orderBy('created_at')
                     ->get();
 
@@ -184,37 +196,100 @@ class ErageHargaKomoditasChart extends ChartWidget
         return [
             'responsive' => true,
             'maintainAspectRatio' => false,
+            'aspectRatio' => 3, // Mengatur rasio aspek untuk chart yang lebih lebar
             'scales' => [
                 'y' => [
                     'beginAtZero' => true,
                     'title' => [
                         'display' => true,
                         'text' => 'Harga (Rp)',
+                        'font' => [
+                            'size' => 12,
+                            'weight' => 'bold'
+                        ]
                     ],
+                    'grid' => [
+                        'display' => true,
+                        'color' => 'rgba(0, 0, 0, 0.1)',
+                    ],
+                    'ticks' => [
+                        'font' => [
+                            'size' => 11
+                        ]
+                    ]
                 ],
                 'x' => [
                     'title' => [
                         'display' => true,
                         'text' => 'Waktu / Komoditas',
+                        'font' => [
+                            'size' => 12,
+                            'weight' => 'bold'
+                        ]
                     ],
+                    'grid' => [
+                        'display' => true,
+                        'color' => 'rgba(0, 0, 0, 0.1)',
+                    ],
+                    'ticks' => [
+                        'font' => [
+                            'size' => 11
+                        ]
+                    ]
                 ],
             ],
             'plugins' => [
                 'legend' => [
                     'display' => true,
                     'position' => 'top',
+                    'labels' => [
+                        'font' => [
+                            'size' => 12
+                        ],
+                        'padding' => 20,
+                        'usePointStyle' => true,
+                    ]
                 ],
                 'tooltip' => [
                     'mode' => 'index',
                     'intersect' => false,
+                    'backgroundColor' => 'rgba(0, 0, 0, 0.8)',
+                    'titleFont' => [
+                        'size' => 13,
+                        'weight' => 'bold'
+                    ],
+                    'bodyFont' => [
+                        'size' => 12
+                    ],
+                    'padding' => 12,
+                    'cornerRadius' => 8,
                 ],
+                'title' => [
+                    'display' => false, // Menggunakan heading widget instead
+                ]
             ],
             'elements' => [
                 'point' => [
-                    'radius' => 4,
-                    'hoverRadius' => 6,
+                    'radius' => 5,
+                    'hoverRadius' => 8,
+                    'borderWidth' => 2,
                 ],
+                'line' => [
+                    'borderWidth' => 3,
+                ]
             ],
+            'interaction' => [
+                'mode' => 'index',
+                'intersect' => false,
+            ],
+            'layout' => [
+                'padding' => [
+                    'top' => 20,
+                    'right' => 20,
+                    'bottom' => 20,
+                    'left' => 20,
+                ]
+            ]
         ];
     }
 }
