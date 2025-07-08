@@ -7,7 +7,7 @@ use App\Models\DataHarian;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
-class DailyDataChart extends ChartWidget
+class EailyDataChart extends ChartWidget
 {
     protected static ?string $heading = 'Harga Harian Komoditas (Status Aktif)';
 
