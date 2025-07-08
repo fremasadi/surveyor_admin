@@ -11,6 +11,9 @@ class EailyDataChart extends ChartWidget
 {
     protected static ?string $heading = 'Harga Harian Komoditas';
 
+     // Bikin lebar penuh
+     protected static ?int $columnSpan = 2;
+
     protected function getData(): array
     {
         $today = Carbon::today();
