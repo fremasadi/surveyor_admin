@@ -30,7 +30,7 @@ class ErageHargaKomoditasChart extends ChartWidget
     protected function getData(): array
     {
         $labels = [];
-        $data = [];
+        $datasets = [];
         
         // Mendapatkan tanggal hari ini
         $today = Carbon::today();
@@ -57,35 +57,119 @@ class ErageHargaKomoditasChart extends ChartWidget
             Log::info('Processing komoditas: ' . $komoditas->name . ' (ID: ' . $komoditas->id . ')');
         }
 
-        foreach ($komoditasList as $komoditas) {
-            // Filter data harian berdasarkan komoditas_id dan created_at hari ini
-            $avg = DataHarian::where('komoditas_id', $komoditas->id)
-                ->whereDate('created_at', $today)
-                ->avg('data_input');
+        // Warna untuk setiap dataset
+        $colors = [
+            '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+            '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#6b7280',
+            '#14b8a6', '#f43f5e', '#3b82f6', '#ef4444', '#10b981'
+        ];
 
-            Log::info("Komoditas: {$komoditas->name}, Avg Today: {$avg}");
+        // Jika menampilkan semua komoditas, buat dataset terpisah untuk setiap komoditas
+        if ($this->filter === 'all' || $this->filter === null) {
+            $colorIndex = 0;
+            
+            foreach ($komoditasList as $komoditas) {
+                // Ambil data harian untuk komoditas ini
+                $dataHarian = DataHarian::where('komoditas_id', $komoditas->id)
+                    ->whereDate('created_at', $today)
+                    ->orderBy('created_at')
+                    ->get();
 
-            // Hanya tampilkan jika ada data
-            if ($avg !== null) {
-                $labels[] = $komoditas->name;
-                $data[] = round($avg, 2);
+                if ($dataHarian->isNotEmpty()) {
+                    $komoditasData = [];
+                    $komoditasLabels = [];
+                    
+                    foreach ($dataHarian as $data) {
+                        $komoditasData[] = $data->data_input;
+                        $komoditasLabels[] = $data->created_at->format('H:i');
+                    }
+
+                    // Jika labels kosong, gunakan labels dari komoditas pertama
+                    if (empty($labels)) {
+                        $labels = $komoditasLabels;
+                    }
+
+                    $datasets[] = [
+                        'label' => $komoditas->name,
+                        'data' => $komoditasData,
+                        'borderColor' => $colors[$colorIndex % count($colors)],
+                        'backgroundColor' => $colors[$colorIndex % count($colors)] . '20',
+                        'tension' => 0.3,
+                        'fill' => false,
+                        'pointBackgroundColor' => $colors[$colorIndex % count($colors)],
+                        'pointBorderColor' => $colors[$colorIndex % count($colors)],
+                        'pointRadius' => 4,
+                        'pointHoverRadius' => 6,
+                    ];
+
+                    $colorIndex++;
+                }
             }
-        }
+            
+            // Jika tidak ada data untuk hari ini, tampilkan rata-rata seperti sebelumnya
+            if (empty($datasets)) {
+                $data = [];
+                $labels = [];
+                
+                foreach ($komoditasList as $komoditas) {
+                    $avg = DataHarian::where('komoditas_id', $komoditas->id)
+                        ->whereDate('created_at', $today)
+                        ->avg('data_input');
 
-        // Debug log untuk hasil akhir
-        Log::info('Final labels: ' . json_encode($labels));
-        Log::info('Final data: ' . json_encode($data));
-
-        return [
-            'datasets' => [
-                [
+                    if ($avg !== null) {
+                        $labels[] = $komoditas->name;
+                        $data[] = round($avg, 2);
+                    }
+                }
+                
+                $datasets[] = [
                     'label' => 'Rata-rata Harga Hari Ini',
                     'data' => $data,
                     'borderColor' => '#3b82f6',
                     'backgroundColor' => 'rgba(59, 130, 246, 0.2)',
                     'tension' => 0.3,
-                ],
-            ],
+                    'pointBackgroundColor' => '#3b82f6',
+                    'pointBorderColor' => '#3b82f6',
+                    'pointRadius' => 4,
+                    'pointHoverRadius' => 6,
+                ];
+            }
+        } else {
+            // Jika filter komoditas spesifik, tampilkan data per waktu
+            $komoditas = Komoditas::find($this->filter);
+            if ($komoditas) {
+                $dataHarian = DataHarian::where('komoditas_id', $komoditas->id)
+                    ->whereDate('created_at', $today)
+                    ->orderBy('created_at')
+                    ->get();
+
+                $data = [];
+                foreach ($dataHarian as $dataItem) {
+                    $labels[] = $dataItem->created_at->format('H:i');
+                    $data[] = $dataItem->data_input;
+                }
+
+                $datasets[] = [
+                    'label' => $komoditas->name,
+                    'data' => $data,
+                    'borderColor' => '#3b82f6',
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.2)',
+                    'tension' => 0.3,
+                    'fill' => false,
+                    'pointBackgroundColor' => '#3b82f6',
+                    'pointBorderColor' => '#3b82f6',
+                    'pointRadius' => 4,
+                    'pointHoverRadius' => 6,
+                ];
+            }
+        }
+
+        // Debug log untuk hasil akhir
+        Log::info('Final labels: ' . json_encode($labels));
+        Log::info('Final datasets count: ' . count($datasets));
+
+        return [
+            'datasets' => $datasets,
             'labels' => $labels,
         ];
     }
@@ -93,5 +177,44 @@ class ErageHargaKomoditasChart extends ChartWidget
     protected function getType(): string
     {
         return 'line';
+    }
+
+    protected function getOptions(): array
+    {
+        return [
+            'responsive' => true,
+            'maintainAspectRatio' => false,
+            'scales' => [
+                'y' => [
+                    'beginAtZero' => true,
+                    'title' => [
+                        'display' => true,
+                        'text' => 'Harga (Rp)',
+                    ],
+                ],
+                'x' => [
+                    'title' => [
+                        'display' => true,
+                        'text' => 'Waktu / Komoditas',
+                    ],
+                ],
+            ],
+            'plugins' => [
+                'legend' => [
+                    'display' => true,
+                    'position' => 'top',
+                ],
+                'tooltip' => [
+                    'mode' => 'index',
+                    'intersect' => false,
+                ],
+            ],
+            'elements' => [
+                'point' => [
+                    'radius' => 4,
+                    'hoverRadius' => 6,
+                ],
+            ],
+        ];
     }
 }
