@@ -14,10 +14,10 @@ class ErageHargaKomoditasChart extends ChartWidget
     // Chart takes full width
     protected int | string | array $columnSpan = 'full';
     
-    // Chart height
-    protected static ?string $maxHeight = '400px';
+    // Chart height - increased for better visibility
+    protected static ?string $maxHeight = '500px';
     
-    // Refresh interval (optional)
+    // Refresh interval
     protected static ?string $pollingInterval = '30s';
 
     protected function getData(): array
@@ -34,11 +34,18 @@ class ErageHargaKomoditasChart extends ChartWidget
             ];
         }
 
-        // Color palette for different commodities
+        // Modern gradient color palette
         $colors = [
-            '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
-            '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#6b7280',
-            '#14b8a6', '#f43f5e', '#059669', '#dc2626', '#7c3aed'
+            ['border' => '#6366f1', 'background' => 'rgba(99, 102, 241, 0.1)', 'gradient' => 'rgba(99, 102, 241, 0.3)'],
+            ['border' => '#ec4899', 'background' => 'rgba(236, 72, 153, 0.1)', 'gradient' => 'rgba(236, 72, 153, 0.3)'],
+            ['border' => '#10b981', 'background' => 'rgba(16, 185, 129, 0.1)', 'gradient' => 'rgba(16, 185, 129, 0.3)'],
+            ['border' => '#f59e0b', 'background' => 'rgba(245, 158, 11, 0.1)', 'gradient' => 'rgba(245, 158, 11, 0.3)'],
+            ['border' => '#8b5cf6', 'background' => 'rgba(139, 92, 246, 0.1)', 'gradient' => 'rgba(139, 92, 246, 0.3)'],
+            ['border' => '#06b6d4', 'background' => 'rgba(6, 182, 212, 0.1)', 'gradient' => 'rgba(6, 182, 212, 0.3)'],
+            ['border' => '#f97316', 'background' => 'rgba(249, 115, 22, 0.1)', 'gradient' => 'rgba(249, 115, 22, 0.3)'],
+            ['border' => '#84cc16', 'background' => 'rgba(132, 204, 22, 0.1)', 'gradient' => 'rgba(132, 204, 22, 0.3)'],
+            ['border' => '#ef4444', 'background' => 'rgba(239, 68, 68, 0.1)', 'gradient' => 'rgba(239, 68, 68, 0.3)'],
+            ['border' => '#14b8a6', 'background' => 'rgba(20, 184, 166, 0.1)', 'gradient' => 'rgba(20, 184, 166, 0.3)'],
         ];
 
         $datasets = [];
@@ -67,32 +74,38 @@ class ErageHargaKomoditasChart extends ChartWidget
                     $labels = $timeLabels;
                 }
 
-                // Create dataset for this commodity
+                // Create dataset for this commodity with modern styling
                 $color = $colors[$colorIndex % count($colors)];
                 $datasets[] = [
                     'label' => $komoditas->name,
                     'data' => $komoditasData,
-                    'borderColor' => $color,
-                    'backgroundColor' => $color . '20',
+                    'borderColor' => $color['border'],
+                    'backgroundColor' => $color['background'],
                     'tension' => 0.4,
-                    'fill' => false,
-                    'pointBackgroundColor' => $color,
-                    'pointBorderColor' => $color,
-                    'pointRadius' => 4,
-                    'pointHoverRadius' => 6,
-                    'pointBorderWidth' => 2,
+                    'fill' => true,
+                    'pointBackgroundColor' => $color['border'],
+                    'pointBorderColor' => '#ffffff',
+                    'pointRadius' => 6,
+                    'pointHoverRadius' => 8,
+                    'pointBorderWidth' => 3,
+                    'pointHoverBorderWidth' => 4,
+                    'borderWidth' => 3,
+                    'pointHoverBackgroundColor' => $color['border'],
+                    'pointHoverBorderColor' => '#ffffff',
                 ];
 
                 $colorIndex++;
             }
         }
 
-        // If no time-based data available, show average prices
+        // If no time-based data available, show average prices with bar chart style
         if (empty($datasets)) {
             $averageData = [];
             $commodityLabels = [];
+            $backgroundColors = [];
+            $borderColors = [];
             
-            foreach ($komoditasList as $komoditas) {
+            foreach ($komoditasList as $index => $komoditas) {
                 $average = DataHarian::where('komoditas_id', $komoditas->id)
                     ->whereDate('created_at', $today)
                     ->where('status', true)
@@ -101,6 +114,10 @@ class ErageHargaKomoditasChart extends ChartWidget
                 if ($average !== null) {
                     $commodityLabels[] = $komoditas->name;
                     $averageData[] = round($average, 2);
+                    
+                    $color = $colors[$index % count($colors)];
+                    $backgroundColors[] = $color['gradient'];
+                    $borderColors[] = $color['border'];
                 }
             }
             
@@ -109,14 +126,11 @@ class ErageHargaKomoditasChart extends ChartWidget
                 $datasets[] = [
                     'label' => 'Rata-rata Harga Hari Ini',
                     'data' => $averageData,
-                    'borderColor' => '#3b82f6',
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.2)',
-                    'tension' => 0.4,
-                    'pointBackgroundColor' => '#3b82f6',
-                    'pointBorderColor' => '#3b82f6',
-                    'pointRadius' => 6,
-                    'pointHoverRadius' => 8,
-                    'pointBorderWidth' => 2,
+                    'backgroundColor' => $backgroundColors,
+                    'borderColor' => $borderColors,
+                    'borderWidth' => 2,
+                    'borderRadius' => 8,
+                    'borderSkipped' => false,
                 ];
             }
         }
@@ -129,7 +143,24 @@ class ErageHargaKomoditasChart extends ChartWidget
 
     protected function getType(): string
     {
-        return 'line';
+        // Check if we have time-based data or average data
+        $today = Carbon::today();
+        $hasTimeData = false;
+        
+        $komoditasList = Komoditas::orderBy('name')->get();
+        foreach ($komoditasList as $komoditas) {
+            $dataCount = DataHarian::where('komoditas_id', $komoditas->id)
+                ->whereDate('created_at', $today)
+                ->where('status', true)
+                ->count();
+            
+            if ($dataCount > 1) {
+                $hasTimeData = true;
+                break;
+            }
+        }
+        
+        return $hasTimeData ? 'line' : 'bar';
     }
 
     protected function getOptions(): array
@@ -137,7 +168,7 @@ class ErageHargaKomoditasChart extends ChartWidget
         return [
             'responsive' => true,
             'maintainAspectRatio' => false,
-            'aspectRatio' => 2.5,
+            'aspectRatio' => 2.2,
             'scales' => [
                 'y' => [
                     'beginAtZero' => true,
@@ -146,19 +177,28 @@ class ErageHargaKomoditasChart extends ChartWidget
                         'text' => 'Harga (Rp)',
                         'font' => [
                             'size' => 14,
-                            'weight' => 'bold'
-                        ]
+                            'weight' => 'bold',
+                            'family' => 'Inter, system-ui, sans-serif'
+                        ],
+                        'color' => '#374151'
                     ],
                     'grid' => [
                         'display' => true,
-                        'color' => 'rgba(0, 0, 0, 0.1)',
-                        'borderDash' => [5, 5],
+                        'color' => 'rgba(107, 114, 128, 0.1)',
+                        'borderDash' => [2, 4],
+                        'lineWidth' => 1,
+                    ],
+                    'border' => [
+                        'display' => false,
                     ],
                     'ticks' => [
                         'font' => [
-                            'size' => 12
+                            'size' => 12,
+                            'family' => 'Inter, system-ui, sans-serif'
                         ],
-                        'callback' => 'function(value) { return "Rp " + value.toLocaleString(); }'
+                        'color' => '#6b7280',
+                        'padding' => 8,
+                        'callback' => 'function(value) { return "Rp " + new Intl.NumberFormat("id-ID").format(value); }'
                     ]
                 ],
                 'x' => [
@@ -167,19 +207,27 @@ class ErageHargaKomoditasChart extends ChartWidget
                         'text' => 'Waktu / Komoditas',
                         'font' => [
                             'size' => 14,
-                            'weight' => 'bold'
-                        ]
+                            'weight' => 'bold',
+                            'family' => 'Inter, system-ui, sans-serif'
+                        ],
+                        'color' => '#374151'
                     ],
                     'grid' => [
-                        'display' => true,
-                        'color' => 'rgba(0, 0, 0, 0.1)',
+                        'display' => false,
+                    ],
+                    'border' => [
+                        'color' => 'rgba(107, 114, 128, 0.2)',
+                        'width' => 1,
                     ],
                     'ticks' => [
                         'font' => [
-                            'size' => 12
+                            'size' => 12,
+                            'family' => 'Inter, system-ui, sans-serif'
                         ],
+                        'color' => '#6b7280',
                         'maxRotation' => 45,
                         'minRotation' => 0,
+                        'padding' => 8,
                     ]
                 ],
             ],
@@ -187,32 +235,48 @@ class ErageHargaKomoditasChart extends ChartWidget
                 'legend' => [
                     'display' => true,
                     'position' => 'top',
+                    'align' => 'start',
                     'labels' => [
                         'font' => [
-                            'size' => 12,
-                            'weight' => '500'
+                            'size' => 13,
+                            'weight' => '500',
+                            'family' => 'Inter, system-ui, sans-serif'
                         ],
+                        'color' => '#374151',
                         'padding' => 20,
                         'usePointStyle' => true,
                         'pointStyle' => 'circle',
+                        'boxWidth' => 8,
+                        'boxHeight' => 8,
                     ]
                 ],
                 'tooltip' => [
+                    'enabled' => true,
                     'mode' => 'index',
                     'intersect' => false,
-                    'backgroundColor' => 'rgba(0, 0, 0, 0.8)',
+                    'backgroundColor' => 'rgba(17, 24, 39, 0.95)',
                     'titleFont' => [
                         'size' => 14,
-                        'weight' => 'bold'
+                        'weight' => 'bold',
+                        'family' => 'Inter, system-ui, sans-serif'
                     ],
+                    'titleColor' => '#ffffff',
                     'bodyFont' => [
-                        'size' => 12
+                        'size' => 13,
+                        'family' => 'Inter, system-ui, sans-serif'
                     ],
-                    'padding' => 12,
-                    'cornerRadius' => 8,
+                    'bodyColor' => '#e5e7eb',
+                    'padding' => 16,
+                    'cornerRadius' => 12,
                     'displayColors' => true,
+                    'borderColor' => 'rgba(107, 114, 128, 0.2)',
+                    'borderWidth' => 1,
+                    'caretSize' => 8,
+                    'caretPadding' => 12,
                     'callbacks' => [
-                        'label' => 'function(context) { return context.dataset.label + ": Rp " + context.parsed.y.toLocaleString(); }'
+                        'label' => 'function(context) { 
+                            return context.dataset.label + ": Rp " + new Intl.NumberFormat("id-ID").format(context.parsed.y); 
+                        }'
                     ]
                 ],
                 'title' => [
@@ -221,14 +285,19 @@ class ErageHargaKomoditasChart extends ChartWidget
             ],
             'elements' => [
                 'point' => [
-                    'radius' => 4,
+                    'radius' => 6,
                     'hoverRadius' => 8,
-                    'borderWidth' => 2,
+                    'borderWidth' => 3,
+                    'hoverBorderWidth' => 4,
                 ],
                 'line' => [
                     'borderWidth' => 3,
                     'borderCapStyle' => 'round',
                     'borderJoinStyle' => 'round',
+                ],
+                'bar' => [
+                    'borderRadius' => 8,
+                    'borderSkipped' => false,
                 ]
             ],
             'interaction' => [
@@ -244,8 +313,8 @@ class ErageHargaKomoditasChart extends ChartWidget
                 ]
             ],
             'animation' => [
-                'duration' => 1000,
-                'easing' => 'easeInOutQuart',
+                'duration' => 1200,
+                'easing' => 'easeInOutCubic',
             ]
         ];
     }
