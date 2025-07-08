@@ -35,7 +35,7 @@ class EailyDataChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Harga (Rp)',
+                    'label' => 'Komoditas',
                     'data' => $grouped->values()->toArray(),
                     'backgroundColor' => '#3b82f6', // biru
                 ],
