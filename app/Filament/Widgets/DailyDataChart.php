@@ -19,25 +19,19 @@ class DailyDataChart extends ChartWidget
 
     protected function getData(): array
     {
-        // Coba ambil data hari ini dulu
+        // Ambil data harian untuk hari ini dengan status true (1)
         $today = Carbon::today();
         
         $data = DataHarian::with('komoditas')
             ->where('tanggal', $today)
-            ->where('status', 1)
+            ->where('status', 1) // status true
             ->get();
 
-        // Jika tidak ada data hari ini, ambil data terbaru dengan status = 1
-        if ($data->isEmpty()) {
-            $data = DataHarian::with('komoditas')
-                ->where('status', 1)
-                ->orderBy('tanggal', 'desc')
-                ->limit(10) // Ambil 10 data terbaru
-                ->get();
-        }
+        // Debug: log data yang ditemukan
+        \Log::info('Data found: ', $data->toArray());
 
-        // Jika masih kosong, return empty chart
         if ($data->isEmpty()) {
+            // Jika tidak ada data hari ini, return data kosong
             return [
                 'datasets' => [
                     [
@@ -62,8 +56,13 @@ class DailyDataChart extends ChartWidget
             })
             ->values();
 
+        // Siapkan data untuk chart
         $labels = $groupedData->pluck('komoditas_name')->toArray();
         $prices = $groupedData->pluck('average_price')->toArray();
+
+        // Debug: log final data
+        \Log::info('Labels: ', $labels);
+        \Log::info('Prices: ', $prices);
 
         return [
             'datasets' => [
@@ -147,12 +146,6 @@ class DailyDataChart extends ChartWidget
                 ],
             ],
         ];
-    }
-
-    // Method untuk refresh data secara otomatis
-    protected function getPollingInterval(): ?string
-    {
-        return '30s'; // Refresh setiap 30 detik
     }
 
     // Method untuk debugging - tambahkan ini untuk testing
