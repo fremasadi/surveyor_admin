@@ -9,7 +9,7 @@ use Carbon\Carbon;
 
 class DailyDataChart extends ChartWidget
 {
-    protected static ?string $heading = 'Data Harian Hari Ini (Status True)';
+    protected static ?string $heading = 'Grafik Harga Komoditas Harian (Status True)';
     
     protected static string $color = 'success';
     
@@ -21,10 +21,29 @@ class DailyDataChart extends ChartWidget
     
     protected function getData(): array
     {
-        // Mengambil data harian hari ini dengan status true
-        $todayData = DataHarian::whereDate('created_at', Carbon::today())
-            ->where('status', true)
-            ->with(['komoditas'])
+        $activeFilter = $this->filter ?? 'today';
+        
+        // Tentukan rentang tanggal berdasarkan filter
+        $query = DataHarian::where('status', true);
+        
+        switch ($activeFilter) {
+            case 'today':
+                $query->whereDate('created_at', Carbon::today());
+                break;
+            case 'week':
+                $query->whereBetween('created_at', [
+                    Carbon::now()->startOfWeek(),
+                    Carbon::now()->endOfWeek()
+                ]);
+                break;
+            case 'month':
+                $query->whereMonth('created_at', Carbon::now()->month)
+                      ->whereYear('created_at', Carbon::now()->year);
+                break;
+        }
+        
+        // Mengambil data harian dengan status true
+        $todayData = $query->with(['komoditas'])
             ->get()
             ->groupBy('komoditas.name');
         
@@ -61,13 +80,25 @@ class DailyDataChart extends ChartWidget
             // Proses setiap komoditas
             foreach ($todayData as $komoditasName => $data) {
                 // Inisialisasi data untuk setiap jam
-                $hourlyData = array_fill(0, 24, 0);
+                $hourlyData = array_fill(0, 24, null);
                 
-                // Hitung jumlah data untuk setiap jam
+                // Hitung rata-rata harga untuk setiap jam
                 foreach ($data as $item) {
                     $hour = Carbon::parse($item->created_at)->hour;
-                    $hourlyData[$hour]++;
+                    
+                    // Ambil harga dari data_input menggunakan helper method
+                    $harga = $this->extractPrice($item->data_input);
+                    
+                    // Jika ada harga, simpan atau hitung rata-rata jika sudah ada data di jam tersebut
+                    if ($harga !== null) {
+                        $hourlyData[$hour] = $this->calculateAveragePrice($hourlyData[$hour], $harga);
+                    }
                 }
+                
+                // Konversi null ke 0 untuk chart (atau bisa diubah sesuai kebutuhan)
+                $hourlyData = array_map(function($value) {
+                    return $value === null ? 0 : $value;
+                }, $hourlyData);
                 
                 // Tambahkan dataset untuk komoditas ini
                 $datasets[] = [
@@ -116,11 +147,21 @@ class DailyDataChart extends ChartWidget
             'plugins' => [
                 'title' => [
                     'display' => true,
-                    'text' => 'Data Harian per Jam (Status: True)',
+                    'text' => 'Grafik Harga Komoditas per Jam (Status: True)',
                 ],
                 'legend' => [
                     'display' => true,
                     'position' => 'top',
+                ],
+                'tooltip' => [
+                    'mode' => 'index',
+                    'intersect' => false,
+                    'callbacks' => [
+                        'label' => 'function(context) { 
+                            return context.dataset.label + ": Rp " + 
+                                   new Intl.NumberFormat("id-ID").format(context.parsed.y); 
+                        }',
+                    ],
                 ],
             ],
             'scales' => [
@@ -139,11 +180,13 @@ class DailyDataChart extends ChartWidget
                     'display' => true,
                     'title' => [
                         'display' => true,
-                        'text' => 'Jumlah Data',
+                        'text' => 'Harga (Rp)',
                     ],
                     'beginAtZero' => true,
                     'ticks' => [
-                        'stepSize' => 1,
+                        'callback' => 'function(value) { 
+                            return "Rp " + new Intl.NumberFormat("id-ID").format(value); 
+                        }',
                     ],
                     'grid' => [
                         'display' => true,
@@ -174,5 +217,58 @@ class DailyDataChart extends ChartWidget
             'week' => 'Minggu Ini',
             'month' => 'Bulan Ini',
         ];
+    }
+    
+    /**
+     * Extract price from data_input JSON field
+     */
+    private function extractPrice($dataInput): ?float
+    {
+        if (empty($dataInput)) {
+            return null;
+        }
+        
+        // Jika sudah berupa array
+        if (is_array($dataInput)) {
+            $data = $dataInput;
+        } else {
+            // Decode JSON
+            $data = json_decode($dataInput, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return null;
+            }
+        }
+        
+        // Coba berbagai kemungkinan nama field untuk harga
+        $priceFields = [
+            'harga', 'price', 'harga_jual', 'harga_beli', 
+            'harga_pasar', 'harga_retail', 'harga_grosir',
+            'cost', 'value', 'amount'
+        ];
+        
+        foreach ($priceFields as $field) {
+            if (isset($data[$field]) && is_numeric($data[$field])) {
+                return (float) $data[$field];
+            }
+        }
+        
+        // Jika data_input langsung berupa angka
+        if (is_numeric($data)) {
+            return (float) $data;
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Calculate average price for hour with existing data
+     */
+    private function calculateAveragePrice(?float $existingPrice, float $newPrice): float
+    {
+        if ($existingPrice === null) {
+            return $newPrice;
+        }
+        
+        return ($existingPrice + $newPrice) / 2;
     }
 }
