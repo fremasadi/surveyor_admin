@@ -15,7 +15,8 @@ class DailyDataChart extends ChartWidget
     
     protected static ?int $sort = 2;
     
-    protected static ?string $maxHeight = '300px';
+    // Hapus maxHeight agar chart bisa full
+    // protected static ?string $maxHeight = '300px';
     
     public ?string $filter = 'today';
     
@@ -48,82 +49,86 @@ class DailyDataChart extends ChartWidget
             ->groupBy('komoditas.name');
         
         // Membuat array untuk menyimpan data chart
-        $chartData = [];
         $labels = [];
         $datasets = [];
         
         // Jika ada data
         if ($todayData->isNotEmpty()) {
-            // Mengambil semua jam dari 00:00 sampai 23:00
-            $hours = collect(range(0, 23))->map(function ($hour) {
-                return sprintf('%02d:00', $hour);
-            });
+            // Ambil nama komoditas sebagai label
+            $labels = $todayData->keys()->toArray();
             
-            $labels = $hours->toArray();
-            
-            // Warna untuk setiap komoditas
+            // Warna untuk chart
             $colors = [
-                'rgb(255, 99, 132)',   // Red
-                'rgb(54, 162, 235)',   // Blue
-                'rgb(255, 205, 86)',   // Yellow
-                'rgb(75, 192, 192)',   // Green
-                'rgb(153, 102, 255)',  // Purple
-                'rgb(255, 159, 64)',   // Orange
-                'rgb(199, 199, 199)',  // Grey
-                'rgb(83, 102, 147)',   // Dark Blue
-                'rgb(255, 99, 255)',   // Pink
-                'rgb(99, 255, 132)',   // Light Green
+                'rgba(255, 99, 132, 0.8)',   // Red
+                'rgba(54, 162, 235, 0.8)',   // Blue
+                'rgba(255, 205, 86, 0.8)',   // Yellow
+                'rgba(75, 192, 192, 0.8)',   // Green
+                'rgba(153, 102, 255, 0.8)',  // Purple
+                'rgba(255, 159, 64, 0.8)',   // Orange
+                'rgba(199, 199, 199, 0.8)',  // Grey
+                'rgba(83, 102, 147, 0.8)',   // Dark Blue
+                'rgba(255, 99, 255, 0.8)',   // Pink
+                'rgba(99, 255, 132, 0.8)',   // Light Green
             ];
             
-            $colorIndex = 0;
+            $borderColors = [
+                'rgba(255, 99, 132, 1)',
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 205, 86, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(153, 102, 255, 1)',
+                'rgba(255, 159, 64, 1)',
+                'rgba(199, 199, 199, 1)',
+                'rgba(83, 102, 147, 1)',
+                'rgba(255, 99, 255, 1)',
+                'rgba(99, 255, 132, 1)',
+            ];
             
-            // Proses setiap komoditas
+            // Hitung rata-rata harga untuk setiap komoditas
+            $averagePrices = [];
+            $backgroundColors = [];
+            $borderColorsData = [];
+            
+            $colorIndex = 0;
             foreach ($todayData as $komoditasName => $data) {
-                // Inisialisasi data untuk setiap jam
-                $hourlyData = array_fill(0, 24, null);
+                $totalPrice = 0;
+                $count = 0;
                 
-                // Hitung rata-rata harga untuk setiap jam
                 foreach ($data as $item) {
-                    $hour = Carbon::parse($item->created_at)->hour;
-                    
-                    // Ambil harga dari data_input menggunakan helper method
                     $harga = $this->extractPrice($item->data_input);
-                    
-                    // Jika ada harga, simpan atau hitung rata-rata jika sudah ada data di jam tersebut
                     if ($harga !== null) {
-                        $hourlyData[$hour] = $this->calculateAveragePrice($hourlyData[$hour], $harga);
+                        $totalPrice += $harga;
+                        $count++;
                     }
                 }
                 
-                // Konversi null ke 0 untuk chart (atau bisa diubah sesuai kebutuhan)
-                $hourlyData = array_map(function($value) {
-                    return $value === null ? 0 : $value;
-                }, $hourlyData);
-                
-                // Tambahkan dataset untuk komoditas ini
-                $datasets[] = [
-                    'label' => $komoditasName ?? 'Tidak Diketahui',
-                    'data' => $hourlyData,
-                    'borderColor' => $colors[$colorIndex % count($colors)],
-                    'backgroundColor' => $colors[$colorIndex % count($colors)] . '20', // Transparansi 20%
-                    'fill' => false,
-                    'tension' => 0.1,
-                    'pointRadius' => 3,
-                    'pointHoverRadius' => 5,
-                ];
-                
+                $averagePrice = $count > 0 ? $totalPrice / $count : 0;
+                $averagePrices[] = $averagePrice;
+                $backgroundColors[] = $colors[$colorIndex % count($colors)];
+                $borderColorsData[] = $borderColors[$colorIndex % count($borderColors)];
                 $colorIndex++;
             }
+            
+            // Dataset untuk bar chart
+            $datasets[] = [
+                'label' => 'Harga Rata-rata (Rp)',
+                'data' => $averagePrices,
+                'backgroundColor' => $backgroundColors,
+                'borderColor' => $borderColorsData,
+                'borderWidth' => 2,
+                'barThickness' => 50,
+                'maxBarThickness' => 60,
+            ];
         } else {
             // Jika tidak ada data, buat chart kosong
-            $labels = ['00:00', '06:00', '12:00', '18:00', '23:00'];
+            $labels = ['Tidak ada data'];
             $datasets = [
                 [
                     'label' => 'Tidak ada data',
-                    'data' => [0, 0, 0, 0, 0],
-                    'borderColor' => 'rgb(199, 199, 199)',
-                    'backgroundColor' => 'rgba(199, 199, 199, 0.1)',
-                    'fill' => false,
+                    'data' => [0],
+                    'backgroundColor' => 'rgba(199, 199, 199, 0.5)',
+                    'borderColor' => 'rgba(199, 199, 199, 1)',
+                    'borderWidth' => 2,
                 ]
             ];
         }
@@ -136,7 +141,7 @@ class DailyDataChart extends ChartWidget
     
     protected function getType(): string
     {
-        return 'line';
+        return 'bar'; // Menggunakan bar chart untuk menampilkan per komoditas
     }
     
     protected function getOptions(): array
@@ -147,15 +152,17 @@ class DailyDataChart extends ChartWidget
             'plugins' => [
                 'title' => [
                     'display' => true,
-                    'text' => 'Grafik Harga Komoditas per Jam (Status: True)',
+                    'text' => 'Grafik Harga Komoditas (Status: True)',
+                    'font' => [
+                        'size' => 16,
+                        'weight' => 'bold'
+                    ]
                 ],
                 'legend' => [
                     'display' => true,
                     'position' => 'top',
                 ],
                 'tooltip' => [
-                    'mode' => 'index',
-                    'intersect' => false,
                     'callbacks' => [
                         'label' => 'function(context) { 
                             return context.dataset.label + ": Rp " + 
@@ -169,11 +176,21 @@ class DailyDataChart extends ChartWidget
                     'display' => true,
                     'title' => [
                         'display' => true,
-                        'text' => 'Jam (24 Hour Format)',
+                        'text' => 'Nama Komoditas',
+                        'font' => [
+                            'size' => 14,
+                            'weight' => 'bold'
+                        ]
+                    ],
+                    'ticks' => [
+                        'maxRotation' => 45,
+                        'minRotation' => 0,
+                        'font' => [
+                            'size' => 12
+                        ]
                     ],
                     'grid' => [
-                        'display' => true,
-                        'color' => 'rgba(0, 0, 0, 0.1)',
+                        'display' => false,
                     ],
                 ],
                 'y' => [
@@ -181,12 +198,19 @@ class DailyDataChart extends ChartWidget
                     'title' => [
                         'display' => true,
                         'text' => 'Harga (Rp)',
+                        'font' => [
+                            'size' => 14,
+                            'weight' => 'bold'
+                        ]
                     ],
                     'beginAtZero' => true,
                     'ticks' => [
                         'callback' => 'function(value) { 
                             return "Rp " + new Intl.NumberFormat("id-ID").format(value); 
                         }',
+                        'font' => [
+                            'size' => 12
+                        ]
                     ],
                     'grid' => [
                         'display' => true,
@@ -194,19 +218,14 @@ class DailyDataChart extends ChartWidget
                     ],
                 ],
             ],
-            'elements' => [
-                'line' => [
-                    'borderWidth' => 2,
-                ],
-                'point' => [
-                    'radius' => 3,
-                    'hoverRadius' => 5,
-                ],
-            ],
-            'interaction' => [
-                'mode' => 'index',
-                'intersect' => false,
-            ],
+            'layout' => [
+                'padding' => [
+                    'left' => 20,
+                    'right' => 20,
+                    'top' => 20,
+                    'bottom' => 20
+                ]
+            ]
         ];
     }
     
@@ -258,17 +277,5 @@ class DailyDataChart extends ChartWidget
         }
         
         return null;
-    }
-    
-    /**
-     * Calculate average price for hour with existing data
-     */
-    private function calculateAveragePrice(?float $existingPrice, float $newPrice): float
-    {
-        if ($existingPrice === null) {
-            return $newPrice;
-        }
-        
-        return ($existingPrice + $newPrice) / 2;
     }
 }
