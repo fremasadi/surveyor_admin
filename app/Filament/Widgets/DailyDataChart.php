@@ -19,26 +19,51 @@ class DailyDataChart extends ChartWidget
 
     protected function getData(): array
     {
-        // Ambil data harian untuk hari ini dengan status true (1)
+        // Coba ambil data hari ini dulu
         $today = Carbon::today();
         
         $data = DataHarian::with('komoditas')
             ->where('tanggal', $today)
-            ->where('status', 1) // status true
-            ->get()
-            ->groupBy('komoditas_id')
+            ->where('status', 1)
+            ->get();
+
+        // Jika tidak ada data hari ini, ambil data terbaru dengan status = 1
+        if ($data->isEmpty()) {
+            $data = DataHarian::with('komoditas')
+                ->where('status', 1)
+                ->orderBy('tanggal', 'desc')
+                ->limit(10) // Ambil 10 data terbaru
+                ->get();
+        }
+
+        // Jika masih kosong, return empty chart
+        if ($data->isEmpty()) {
+            return [
+                'datasets' => [
+                    [
+                        'label' => 'Harga (Rp)',
+                        'data' => [],
+                        'backgroundColor' => 'rgba(54, 162, 235, 0.8)',
+                        'borderColor' => 'rgba(54, 162, 235, 1)',
+                        'borderWidth' => 2,
+                    ],
+                ],
+                'labels' => [],
+            ];
+        }
+
+        $groupedData = $data->groupBy('komoditas_id')
             ->map(function ($items) {
-                // Ambil rata-rata harga jika ada multiple data untuk komoditas yang sama
+                $komoditas = $items->first()->komoditas;
                 return [
-                    'komoditas_name' => $items->first()->komoditas->name,
-                    'average_price' => $items->avg('data_input')
+                    'komoditas_name' => $komoditas ? $komoditas->name : 'Unknown',
+                    'average_price' => (float) $items->avg('data_input')
                 ];
             })
             ->values();
 
-        // Siapkan data untuk chart
-        $labels = $data->pluck('komoditas_name')->toArray();
-        $prices = $data->pluck('average_price')->toArray();
+        $labels = $groupedData->pluck('komoditas_name')->toArray();
+        $prices = $groupedData->pluck('average_price')->toArray();
 
         return [
             'datasets' => [
@@ -128,6 +153,72 @@ class DailyDataChart extends ChartWidget
     protected function getPollingInterval(): ?string
     {
         return '30s'; // Refresh setiap 30 detik
+    }
+
+    // Method untuk debugging - tambahkan ini untuk testing
+    public function testData()
+    {
+        $today = Carbon::today();
+        
+        // Test 1: Cek semua data harian
+        $allData = DataHarian::with('komoditas')->get();
+        dd('All data:', $allData->toArray());
+        
+        // Test 2: Cek data hari ini tanpa filter status
+        $todayData = DataHarian::with('komoditas')
+            ->where('tanggal', $today)
+            ->get();
+        dd('Today data:', $todayData->toArray());
+        
+        // Test 3: Cek data dengan status = 1
+        $statusData = DataHarian::with('komoditas')
+            ->where('tanggal', $today)
+            ->where('status', 1)
+            ->get();
+        dd('Status 1 data:', $statusData->toArray());
+    }
+
+    // Method alternatif untuk test tanpa filter tanggal
+    public function getDataWithoutDateFilter(): array
+    {
+        $data = DataHarian::with('komoditas')
+            ->where('status', 1)
+            ->get()
+            ->groupBy('komoditas_id')
+            ->map(function ($items) {
+                $komoditas = $items->first()->komoditas;
+                return [
+                    'komoditas_name' => $komoditas ? $komoditas->name : 'Unknown',
+                    'average_price' => (float) $items->avg('data_input')
+                ];
+            })
+            ->values();
+
+        $labels = $data->pluck('komoditas_name')->toArray();
+        $prices = $data->pluck('average_price')->toArray();
+
+        return [
+            'datasets' => [
+                [
+                    'label' => 'Harga (Rp)',
+                    'data' => $prices,
+                    'backgroundColor' => [
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(255, 205, 86, 0.8)',
+                        'rgba(75, 192, 192, 0.8)',
+                    ],
+                    'borderColor' => [
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(255, 205, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                    ],
+                    'borderWidth' => 2,
+                ],
+            ],
+            'labels' => $labels,
+        ];
     }
 
     // Method untuk filter data berdasarkan tanggal tertentu (optional)
