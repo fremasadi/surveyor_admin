@@ -9,7 +9,7 @@ use Carbon\Carbon;
 
 class EailyDataChart extends ChartWidget
 {
-    protected static ?string $heading = 'Harga Harian Komoditas (Status Aktif)';
+    protected static ?string $heading = 'Harga Harian Komoditas';
 
     protected function getData(): array
     {
