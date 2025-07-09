@@ -11,7 +11,7 @@ use Carbon\Carbon;
 
 class ErageHargaKomoditasChart extends ChartWidget
 {
-    protected static ?string $heading = 'Rata-rata Harga per Komoditas - 7 Hari Terakhir';
+    protected static ?string $heading = 'Rata-rata Harga per Komoditas - Hari Ini';
 
     public ?string $filter = null;
 
@@ -30,22 +30,14 @@ class ErageHargaKomoditasChart extends ChartWidget
     protected function getData(): array
     {
         $labels = [];
-        $datasets = [];
+        $data = [];
 
-        // Mendapatkan range tanggal 7 hari terakhir
-        $endDate = Carbon::today();
-        $startDate = Carbon::today()->subDays(6); // 7 hari termasuk hari ini
+        // Mendapatkan tanggal hari ini
+        $today = Carbon::today();
 
         // Debug log untuk melihat filter yang dipilih
         Log::info('Filter selected: ' . $this->filter);
-        Log::info('Date range: ' . $startDate->toDateString() . ' to ' . $endDate->toDateString());
-
-        // Membuat array tanggal untuk label
-        $dateRange = [];
-        for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
-            $dateRange[] = $date->copy();
-            $labels[] = $date->format('d/m'); // Format DD/MM
-        }
+        Log::info('Date filter: ' . $today->toDateString());
 
         // Query builder untuk komoditas dengan filter
         $komoditasQuery = Komoditas::query();
@@ -60,68 +52,41 @@ class ErageHargaKomoditasChart extends ChartWidget
 
         $komoditasList = $komoditasQuery->get();
 
-        // Warna untuk setiap komoditas
-        $colors = [
-            '#3b82f6', // Blue
-            '#ef4444', // Red
-            '#10b981', // Green
-            '#f59e0b', // Yellow
-            '#8b5cf6', // Purple
-            '#06b6d4', // Cyan
-            '#f97316', // Orange
-            '#84cc16', // Lime
-            '#ec4899', // Pink
-            '#6b7280', // Gray
-        ];
-
-        $colorIndex = 0;
+        // Debug log untuk melihat komoditas yang diambil
+        foreach ($komoditasList as $komoditas) {
+            Log::info('Processing komoditas: ' . $komoditas->name . ' (ID: ' . $komoditas->id . ')');
+        }
 
         foreach ($komoditasList as $komoditas) {
-            $komoditasData = [];
-            $hasData = false;
+            // Filter data harian berdasarkan komoditas_id dan created_at hari ini
+            $avg = DataHarian::where('komoditas_id', $komoditas->id)
+                ->whereDate('created_at', $today)
+                ->avg('data_input');
 
-            // Ambil data untuk setiap hari dalam range
-            foreach ($dateRange as $date) {
-                $avg = DataHarian::where('komoditas_id', $komoditas->id)
-                    ->whereDate('created_at', $date)
-                    ->avg('data_input');
-
-                if ($avg !== null) {
-                    $komoditasData[] = round($avg, 2);
-                    $hasData = true;
-                } else {
-                    $komoditasData[] = null; // Null untuk hari tanpa data
-                }
-            }
-
-            Log::info("Komoditas: {$komoditas->name}, Data: " . json_encode($komoditasData));
+            Log::info("Komoditas: {$komoditas->name}, Avg Today: {$avg}");
 
             // Hanya tampilkan jika ada data
-            if ($hasData) {
-                $color = $colors[$colorIndex % count($colors)];
-                
-                $datasets[] = [
-                    'label' => $komoditas->name,
-                    'data' => $komoditasData,
-                    'borderColor' => $color,
-                    'backgroundColor' => $color . '20', // Add transparency
-                    'tension' => 0.3,
-                    'fill' => false,
-                    'pointRadius' => 4,
-                    'pointHoverRadius' => 6,
-                    'spanGaps' => true, // Menghubungkan garis meskipun ada data kosong
-                ];
-                
-                $colorIndex++;
+            if ($avg !== null) {
+                $labels[] = $komoditas->name;
+                $data[] = round($avg, 2);
             }
         }
 
         // Debug log untuk hasil akhir
         Log::info('Final labels: ' . json_encode($labels));
-        Log::info('Final datasets count: ' . count($datasets));
+        Log::info('Final data: ' . json_encode($data));
 
         return [
-            'datasets' => $datasets,
+            'datasets' => [
+                [
+                    'label' => 'Rata-rata Harga Hari Ini',
+                    'data' => $data,
+                    'borderColor' => '
+#3b82f6',
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.2)',
+                    'tension' => 0.3,
+                ],
+            ],
             'labels' => $labels,
         ];
     }
@@ -129,49 +94,5 @@ class ErageHargaKomoditasChart extends ChartWidget
     protected function getType(): string
     {
         return 'line';
-    }
-
-    protected function getOptions(): array
-    {
-        return [
-            'responsive' => true,
-            'maintainAspectRatio' => false,
-            'scales' => [
-                'y' => [
-                    'beginAtZero' => false,
-                    'title' => [
-                        'display' => true,
-                        'text' => 'Harga (Rp)',
-                    ],
-                    'ticks' => [
-                        'callback' => 'function(value) { return "Rp " + value.toLocaleString("id-ID"); }',
-                    ],
-                ],
-                'x' => [
-                    'title' => [
-                        'display' => true,
-                        'text' => 'Tanggal',
-                    ],
-                ],
-            ],
-            'plugins' => [
-                'tooltip' => [
-                    'mode' => 'index',
-                    'intersect' => false,
-                    'callbacks' => [
-                        'label' => 'function(context) { return context.dataset.label + ": Rp " + context.parsed.y.toLocaleString("id-ID"); }',
-                    ],
-                ],
-                'legend' => [
-                    'display' => true,
-                    'position' => 'top',
-                ],
-            ],
-            'interaction' => [
-                'mode' => 'nearest',
-                'axis' => 'x',
-                'intersect' => false,
-            ],
-        ];
     }
 }
