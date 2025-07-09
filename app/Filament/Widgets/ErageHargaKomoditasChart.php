@@ -9,47 +9,67 @@ use Carbon\Carbon;
 
 class ErageHargaKomoditasChart extends ChartWidget
 {
-    protected static ?string $heading = 'Tren Rata-rata Harga Komoditas (7 Hari Terakhir)';
+    protected static ?string $heading = 'Tren Harga Rata-rata Komoditas (7 Hari)';
+
+    public ?string $filter = null;
+
+    protected function getFilters(): ?array
+    {
+        $filters = [];
+
+        $komoditasList = Komoditas::orderBy('name')->get();
+        foreach ($komoditasList as $komoditas) {
+            $filters[$komoditas->id] = $komoditas->name;
+        }
+
+        return $filters;
+    }
 
     protected function getData(): array
     {
         $labels = [];
-        $datasets = [];
+        $data = [];
 
-        // Ambil tanggal 7 hari terakhir
-        $dates = collect();
-        for ($i = 6; $i >= 0; $i--) {
-            $date = Carbon::today()->subDays($i)->toDateString();
-            $labels[] = Carbon::parse($date)->translatedFormat('d M');
-            $dates->push($date);
+        // Ambil komoditas berdasarkan filter, atau default ke pertama
+        $komoditas = null;
+        if ($this->filter) {
+            $komoditas = Komoditas::find($this->filter);
         }
 
-        // Ambil semua komoditas
-        $komoditasList = Komoditas::orderBy('name')->get();
+        if (!$komoditas) {
+            $komoditas = Komoditas::orderBy('name')->first();
+        }
 
-        foreach ($komoditasList as $komoditas) {
-            $data = [];
-
-            foreach ($dates as $date) {
-                $avg = DataHarian::where('komoditas_id', $komoditas->id)
-                    ->whereDate('created_at', $date)
-                    ->where('status', true)
-                    ->avg('data_input');
-
-                $data[] = $avg !== null ? round($avg, 2) : null;
-            }
-
-            $datasets[] = [
-                'label' => $komoditas->name,
-                'data' => $data,
-                'borderColor' => $this->getRandomColor(),
-                'backgroundColor' => 'transparent',
-                'tension' => 0.3,
+        if (!$komoditas) {
+            return [
+                'datasets' => [],
+                'labels' => [],
             ];
         }
 
+        // Ambil tanggal 7 hari terakhir
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::today()->subDays($i)->toDateString();
+            $labels[] = Carbon::parse($date)->translatedFormat('d M');
+
+            $avg = DataHarian::where('komoditas_id', $komoditas->id)
+                ->whereDate('created_at', $date)
+                ->where('status', true)
+                ->avg('data_input');
+
+            $data[] = $avg !== null ? round($avg, 2) : null;
+        }
+
         return [
-            'datasets' => $datasets,
+            'datasets' => [
+                [
+                    'label' => $komoditas->name,
+                    'data' => $data,
+                    'borderColor' => '#3b82f6',
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.2)',
+                    'tension' => 0.4,
+                ],
+            ],
             'labels' => $labels,
         ];
     }
@@ -59,13 +79,6 @@ class ErageHargaKomoditasChart extends ChartWidget
         return 'line';
     }
 
-    // Utility untuk generate warna acak
-    protected function getRandomColor(): string
-    {
-        return sprintf('#%06X', mt_rand(0, 0xFFFFFF));
-    }
-
-    // Buat grafik full width
     public function getColumnSpan(): int|string|array
     {
         return 'full';
