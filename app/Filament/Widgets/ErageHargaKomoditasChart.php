@@ -5,88 +5,51 @@ namespace App\Filament\Widgets;
 use Filament\Widgets\ChartWidget;
 use App\Models\DataHarian;
 use App\Models\Komoditas;
-use Filament\Forms\Components\Select;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class ErageHargaKomoditasChart extends ChartWidget
 {
-    protected static ?string $heading = 'Rata-rata Harga per Komoditas - Hari Ini';
-
-    public ?string $filter = null;
-
-    protected function getFilters(): ?array
-    {
-        $filters = ['all' => 'Semua Komoditas'];
-
-        $komoditasList = Komoditas::orderBy('name')->get();
-        foreach ($komoditasList as $komoditas) {
-            $filters[$komoditas->id] = $komoditas->name;
-        }
-
-        return $filters;
-    }
+    protected static ?string $heading = 'Tren Rata-rata Harga Komoditas (7 Hari Terakhir)';
 
     protected function getData(): array
     {
         $labels = [];
-        $data = [];
+        $datasets = [];
 
-        // Mendapatkan tanggal hari ini
-        $today = Carbon::today();
-
-        // Debug log untuk melihat filter yang dipilih
-        Log::info('Filter selected: ' . $this->filter);
-        Log::info('Date filter: ' . $today->toDateString());
-
-        // Query builder untuk komoditas dengan filter
-        $komoditasQuery = Komoditas::query();
-
-        // Jika ada filter yang dipilih dan bukan 'all', filter berdasarkan ID
-        if ($this->filter && $this->filter !== 'all') {
-            $komoditasQuery->where('id', $this->filter);
-            Log::info('Filtering by komoditas ID: ' . $this->filter);
-        } else {
-            Log::info('Showing all komoditas');
+        // Ambil tanggal 7 hari terakhir
+        $dates = collect();
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::today()->subDays($i)->toDateString();
+            $labels[] = Carbon::parse($date)->translatedFormat('d M');
+            $dates->push($date);
         }
 
-        $komoditasList = $komoditasQuery->get();
-
-        // Debug log untuk melihat komoditas yang diambil
-        foreach ($komoditasList as $komoditas) {
-            Log::info('Processing komoditas: ' . $komoditas->name . ' (ID: ' . $komoditas->id . ')');
-        }
+        // Ambil semua komoditas
+        $komoditasList = Komoditas::orderBy('name')->get();
 
         foreach ($komoditasList as $komoditas) {
-            // Filter data harian berdasarkan komoditas_id dan created_at hari ini
-            $avg = DataHarian::where('komoditas_id', $komoditas->id)
-                ->whereDate('created_at', $today)
-                ->avg('data_input');
+            $data = [];
 
-            Log::info("Komoditas: {$komoditas->name}, Avg Today: {$avg}");
+            foreach ($dates as $date) {
+                $avg = DataHarian::where('komoditas_id', $komoditas->id)
+                    ->whereDate('created_at', $date)
+                    ->where('status', true)
+                    ->avg('data_input');
 
-            // Hanya tampilkan jika ada data
-            if ($avg !== null) {
-                $labels[] = $komoditas->name;
-                $data[] = round($avg, 2);
+                $data[] = $avg !== null ? round($avg, 2) : null;
             }
-        }
 
-        // Debug log untuk hasil akhir
-        Log::info('Final labels: ' . json_encode($labels));
-        Log::info('Final data: ' . json_encode($data));
+            $datasets[] = [
+                'label' => $komoditas->name,
+                'data' => $data,
+                'borderColor' => $this->getRandomColor(),
+                'backgroundColor' => 'transparent',
+                'tension' => 0.3,
+            ];
+        }
 
         return [
-            'datasets' => [
-                [
-                    'label' => 'Rata-rata Harga Hari Ini',
-                    'data' => $data,
-                    'borderColor' => '
-#3b82f6',
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.2)',
-                    'tension' => 0.3,
-                ],
-            ],
+            'datasets' => $datasets,
             'labels' => $labels,
         ];
     }
@@ -94,5 +57,17 @@ class ErageHargaKomoditasChart extends ChartWidget
     protected function getType(): string
     {
         return 'line';
+    }
+
+    // Utility untuk generate warna acak
+    protected function getRandomColor(): string
+    {
+        return sprintf('#%06X', mt_rand(0, 0xFFFFFF));
+    }
+
+    // Buat grafik full width
+    public function getColumnSpan(): int|string|array
+    {
+        return 'full';
     }
 }
