@@ -23,7 +23,7 @@ class DashboardStatsOverview extends BaseWidget
                 ->description('Total komoditas yang terdaftar')
                 ->color('info'),
 
-            Card::make('Jumlah Responden', Responden::count())
+            Card::make('Jumlah Penjual', Responden::count())
                 ->description('Total responden yang terdaftar')
                 ->color('danger'),
 
