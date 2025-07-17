@@ -24,7 +24,7 @@ class DashboardStatsOverview extends BaseWidget
                 ->color('info'),
 
             Card::make('Jumlah Penjual', Responden::count())
-                ->description('Total responden yang terdaftar')
+                ->description('Total Penjual yang terdaftar')
                 ->color('danger'),
 
             Card::make('Jumlah Data Harian Hari Ini', DataHarian::whereDate('created_at', Carbon::today())->count())
